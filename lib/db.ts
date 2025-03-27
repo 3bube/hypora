@@ -1,8 +1,9 @@
 import mongoose from 'mongoose';
 
-// Connection URI
-const MONGODB_URI = process.env.MONGODB_URI;
+// Connection URI - ensure it's a string
+const MONGODB_URI = process.env.MONGODB_URI as string;
 
+// Validate MongoDB URI
 if (!MONGODB_URI) {
   throw new Error('Please define the MONGODB_URI environment variable');
 }
@@ -11,6 +12,12 @@ if (!MONGODB_URI) {
 interface CachedConnection {
   conn: typeof mongoose | null;
   promise: Promise<typeof mongoose> | null;
+}
+
+// Define the global mongoose type
+declare global {
+  // eslint-disable-next-line no-var
+  var mongoose: CachedConnection | undefined;
 }
 
 // Define the Waitlist schema
@@ -34,20 +41,15 @@ const WaitlistSchema = new mongoose.Schema({
 });
 
 // Create the Waitlist model
-// We need to use mongoose.models to check if the model already exists to prevent model overwrite errors
 export const Waitlist = mongoose.models.Waitlist || mongoose.model('Waitlist', WaitlistSchema);
 
-// Define the global mongoose type
-declare global {
-  // eslint-disable-next-line no-var
-  var mongoose: CachedConnection | undefined;
-}
+/** 
+ * Cached connection for MongoDB.
+ */
+const cached: CachedConnection = global.mongoose || { conn: null, promise: null };
 
-// Database connection caching
-let cached: CachedConnection = global.mongoose;
-
-if (!cached) {
-  cached = global.mongoose = { conn: null, promise: null };
+if (!global.mongoose) {
+  global.mongoose = cached;
 }
 
 /**
