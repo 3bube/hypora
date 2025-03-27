@@ -1,7 +1,11 @@
 import mongoose from 'mongoose';
 
 // Connection URI
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/hypora";
+const MONGODB_URI = process.env.MONGODB_URI;
+
+if (!MONGODB_URI) {
+  throw new Error('Please define the MONGODB_URI environment variable');
+}
 
 // Define interface for cached connection
 interface CachedConnection {
@@ -40,13 +44,16 @@ declare global {
 }
 
 // Database connection caching
-const cached: CachedConnection = global.mongoose || { conn: null, promise: null };
+let cached: CachedConnection = global.mongoose;
 
-if (!global.mongoose) {
-  global.mongoose = cached;
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
 }
 
-export async function connectToDatabase(): Promise<typeof mongoose> {
+/**
+ * Connect to MongoDB database
+ */
+async function dbConnect(): Promise<typeof mongoose> {
   if (cached.conn) {
     return cached.conn;
   }
@@ -59,9 +66,11 @@ export async function connectToDatabase(): Promise<typeof mongoose> {
       connectTimeoutMS: 10000, // Give up initial connection after 10 seconds
     };
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then(() => mongoose);
+    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
+      return mongoose;
+    });
   }
-
+  
   try {
     cached.conn = await cached.promise;
     return cached.conn;
@@ -84,7 +93,7 @@ export async function addToWaitlist(email: string, username: string) {
 
     // Connect to database with timeout
     await Promise.race([
-      connectToDatabase(),
+      dbConnect(),
       timeoutPromise
     ]);
     
@@ -113,3 +122,5 @@ export async function addToWaitlist(email: string, username: string) {
     throw error;
   }
 }
+
+export default dbConnect;

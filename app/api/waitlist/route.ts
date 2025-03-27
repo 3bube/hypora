@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { addToWaitlist, connectToDatabase } from '@/lib/db';
+import dbConnect, { addToWaitlist } from '@/lib/db';
 
 export const maxDuration = 10; // Set max duration to 10 seconds for this route
 
 export async function POST(request: Request) {
   try {
     // Ensure database connection is established
-    await connectToDatabase();
+    await dbConnect();
     
     const { email, username } = await request.json();
     
