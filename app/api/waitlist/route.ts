@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { addToWaitlist, connectToDatabase } from '@/lib/db';
 
+export const maxDuration = 10; // Set max duration to 10 seconds for this route
+
 export async function POST(request: Request) {
   try {
     // Ensure database connection is established
@@ -26,11 +28,27 @@ export async function POST(request: Request) {
     console.error('Waitlist submission error:', error);
     
     // Check for specific error messages
-    if (error instanceof Error && error.message === 'This email is already on the waitlist') {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 409 } // Conflict status code
-      );
+    if (error instanceof Error) {
+      if (error.message === 'This email is already on the waitlist') {
+        return NextResponse.json(
+          { error: error.message },
+          { status: 409 } // Conflict status code
+        );
+      }
+      
+      if (error.message === 'The server is experiencing high load. Please try again later.') {
+        return NextResponse.json(
+          { error: error.message },
+          { status: 503 } // Service Unavailable
+        );
+      }
+      
+      if (error.message === 'Failed to connect to database') {
+        return NextResponse.json(
+          { error: 'Unable to connect to the database. Please try again later.' },
+          { status: 503 } // Service Unavailable
+        );
+      }
     }
     
     return NextResponse.json(
