@@ -48,8 +48,21 @@ export default function WaitlistForm({ onSubmit }: WaitlistFormProps) {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to submit");
+        // Safely parse JSON response or handle text response
+        let errorMessage = "Failed to submit";
+        
+        // First try to parse as JSON
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } else {
+          // If not JSON, get as text
+          const textContent = await response.text();
+          if (textContent) errorMessage = textContent;
+        }
+        
+        throw new Error(errorMessage);
       }
 
       // Call the original onSubmit prop for any additional handling
